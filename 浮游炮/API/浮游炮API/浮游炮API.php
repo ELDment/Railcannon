@@ -37,7 +37,8 @@ function get_data($SteamId)
     }
     //========================特定时间限免浮游炮========================//
     $conn = connect();
-    $sql = "SELECT * FROM `railcannon` WHERE `Steam32`='$SteamId'";
+    $time = time();
+    $sql = "SELECT * FROM `railcannon` WHERE `Steam32`='$SteamId' AND `Expiretime`>$time";
     $result = $conn -> query($sql);
     $Bool;$R;$G;$B;$eunix;
     if ($result -> num_rows > 0)
@@ -117,10 +118,26 @@ function make_key($days, $fill = false)
 
 function check_key($SteamId, $SteamName, $CDKey)
 {
-    $conn = connect();
-    $buffer = json_decode(base64_decode($CDKey), true);
+    $temp = base64_decode($CDKey, true);
+    if ($temp == false)
+    {
+        echo json_encode(array('status' => false, 'Msg' => '无效卡密#1'));
+        exit;
+    }
+    $buffer = json_decode($temp, true);
+    if (json_last_error() != JSON_ERROR_NONE)
+    {
+        echo json_encode(array('status' => false, 'Msg' => "无效卡密#2"));
+        exit;
+    }
+    if (!array_key_exists('days', $buffer))
+    {
+        echo json_encode(array('status' => false, 'Msg' => '无效卡密#3'));
+        exit;
+    }
     $days = $buffer['days'];
     $sql = "SELECT * FROM `railcannon` WHERE `Steam32`='$SteamId'";
+    $conn = connect();
     $result = $conn -> query($sql);
     
     if ($result -> num_rows > 0)
