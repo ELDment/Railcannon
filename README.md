@@ -5,6 +5,7 @@
 ## 所需拓展
 * **[RIPEXT](https://github.com/ErikMinekus/sm-ripext/releases/tag/1.3.1)**
 ## 功能
+- **🌟 * 2024重构版本默认移除插件云验证**
 - **🎇 浮游炮本体功能**
 - **🏆 高级功能**
   - Convar设置（浮游炮API、弹道材质、Prefix）
