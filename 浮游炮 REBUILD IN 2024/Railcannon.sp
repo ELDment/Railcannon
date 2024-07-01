@@ -68,18 +68,9 @@ public void OnConfigsExecuted()
 
 public void OnConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	if (convar == RcApi)	
-	{
-		RcApi.GetString(RCwebapi, sizeof RCwebapi);
-	}
-	else if (convar == RcMaterial)
-	{
-		RcMaterial.GetString(RCmaterial, sizeof RCmaterial);
-	}
-	else if (convar == RcPrefix)
-	{
-		RcPrefix.GetString(RCprefix, sizeof RCprefix);
-	}
+	RcApi.GetString(RCwebapi, sizeof RCwebapi);
+	RcMaterial.GetString(RCmaterial, sizeof RCmaterial);
+	RcPrefix.GetString(RCprefix, sizeof RCprefix);
 	return;
 }
 
@@ -99,14 +90,11 @@ public void OnClientPostAdminCheck(int client)
 
 public void OnClientDisconnect(int client)
 {
-	if (g_iRCIdx[client] != -1)
+	if (g_iRCIdx[client] != -1 && IsValidEdict(g_iRCIdx[client]))
 	{
-		if (IsValidEdict(g_iRCIdx[client]))
-		{
-			AcceptEntityInput(g_iRCIdx[client], "Kill");
-			g_iRCIdx[client] = -1;
-			g_flRCLastThink[client] = 0.0;
-		}
+		AcceptEntityInput(g_iRCIdx[client], "Kill");
+		g_iRCIdx[client] = -1;
+		g_flRCLastThink[client] = 0.0;
 	}
 	return;
 }
@@ -147,12 +135,12 @@ public Action OpenRailcannonMenu(int client, int args)
 		Format(rgb, sizeof rgb, "当前RGB设定：%i, %i, %i", g_rcColor[client][0], g_rcColor[client][1], g_rcColor[client][2]);
 
 		Handle menu = CreateMenu(MenuHandle);
-		SetMenuTitle(menu, "[- 浮游炮 · 面板 -]");
+		SetMenuTitle(menu, "[- 浮游炮 | 面板 -]");
 		AddMenuItem(menu, "1", time, ITEMDRAW_DISABLED);
 		AddMenuItem(menu, "2", rgb, ITEMDRAW_DISABLED);
-		AddMenuItem(menu, "3", "· 强制开启浮游炮  !frc", ITEMDRAW_DISABLED);
-		AddMenuItem(menu, "4", "· 更改浮游炮设定颜色  !rcl", ITEMDRAW_DISABLED);
-		AddMenuItem(menu, "5", "· 兑换浮游炮  !rckey", ITEMDRAW_DISABLED);
+		AddMenuItem(menu, "3", "- 强制开启浮游炮  !frc", ITEMDRAW_DISABLED);
+		AddMenuItem(menu, "4", "- 更改浮游炮设定颜色  !rcl", ITEMDRAW_DISABLED);
+		AddMenuItem(menu, "5", "- 兑换浮游炮  !rckey", ITEMDRAW_DISABLED);
 		SetMenuExitButton(menu, true);
 		DisplayMenu(menu, client, 30);
 	}
@@ -178,15 +166,15 @@ public Action UpdateRailcannonColor(int client, int args)
 	}
 	if (!g_bLoaded[client])
 	{
-		PrintToChat(client, "\x01[\x0E%s\x01] \x01%N 未获得浮游炮使用权", RCprefix, client);
+		PrintToChat(client, "\x01[\x0E%s\x01] \x01%N 未获得浮游炮授权", RCprefix, client);
 		return Plugin_Continue;
 	}
 	char Rbuffer[8];
-	GetCmdArg(1, Rbuffer, sizeof(Rbuffer));
+	GetCmdArg(1, Rbuffer, sizeof Rbuffer);
 	char Gbuffer[8];
-	GetCmdArg(2, Gbuffer, sizeof(Gbuffer));
+	GetCmdArg(2, Gbuffer, sizeof Gbuffer);
 	char Bbuffer[8];
-	GetCmdArg(3, Bbuffer, sizeof(Bbuffer));
+	GetCmdArg(3, Bbuffer, sizeof Bbuffer);
 	int R = StringToInt(Rbuffer);
 	int G = StringToInt(Gbuffer);
 	int B = StringToInt(Bbuffer);
@@ -201,7 +189,7 @@ public Action UpdateRailcannonColor(int client, int args)
 
 public Action CreateRailcannon(int client)
 {
-	if (!IsValidClient(client) || !g_bLoaded[client])
+	if (!IsValidClient(client) || !IsPlayerAlive(client) || !g_bLoaded[client])
 		return Plugin_Continue;
 	int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 	if (!IsValidEdict(weapon))
@@ -211,11 +199,10 @@ public Action CreateRailcannon(int client)
 	GetClientEyePosition(client, vecOrigin);
 	vecOrigin[2] += 35.0;
 	GetEntPropString(weapon, Prop_Data, "m_ModelName", szModel, 256);
-	ReplaceString(szModel, 256, "_dropped", "", false);
+	ReplaceString(szModel, sizeof szModel, "_dropped", "", false);
 	g_iRCIdx[client] = CreateEntityByName("prop_dynamic_glow");
-	if(g_iRCIdx[client] == -1)
+	if (g_iRCIdx[client] == -1)
 		return Plugin_Continue;
-
 	DispatchKeyValue(g_iRCIdx[client], "model", szModel);
 	DispatchKeyValue(g_iRCIdx[client], "disablereceiveshadows", "1");
 	DispatchKeyValue(g_iRCIdx[client], "disableshadows", "1");
@@ -226,14 +213,13 @@ public Action CreateRailcannon(int client)
 	SetEntProp(g_iRCIdx[client], Prop_Send, "m_bShouldGlow", true);
 	SetEntPropFloat(g_iRCIdx[client], Prop_Send, "m_flModelScale", 2.0);
 	SetEntPropFloat(g_iRCIdx[client], Prop_Send, "m_flGlowMaxDist", 100000.0);
-	SetEntityRenderMode(g_iRCIdx[client],  RENDER_TRANSCOLOR);
+	SetEntityRenderMode(g_iRCIdx[client], RENDER_TRANSCOLOR);
 	SetEntityRenderColor(g_iRCIdx[client], g_rcColor[client][0], g_rcColor[client][1], g_rcColor[client][2], 50);
 	SetGlowColor(g_iRCIdx[client], g_rcColor[client][0], g_rcColor[client][1], g_rcColor[client][2], 255);
 	TeleportEntity(g_iRCIdx[client], vecOrigin, NULL_VECTOR, NULL_VECTOR);
 	SetEntPropEnt(g_iRCIdx[client], Prop_Send, "m_hOwnerEntity", client);
 	SetEntPropEnt(g_iRCIdx[client], Prop_Data, "m_pParent", client);
-
-	SDKHook(client, SDKHook_WeaponSwitchPost, SDKHookCB_WeaponSwitchPost);
+	SDKHook(client, SDKHook_WeaponSwitchPost, OnWeaponSwitch);
 	return Plugin_Continue;
 }
 
@@ -241,9 +227,9 @@ public void OnGameFrame()
 {
 	for (int client = 1; client <= MaxClients; client++)
 	{
-		if (IsValidClient(client) || !g_bLoaded[client])
+		if (!IsValidClient(client) || !IsPlayerAlive(client))
 		{
-			SDKUnhook(client, SDKHook_WeaponSwitchPost, SDKHookCB_WeaponSwitchPost);
+			SDKUnhook(client, SDKHook_WeaponSwitchPost, OnWeaponSwitch);
 			continue;
 		}
 		if (g_iRCIdx[client] != -1 && IsValidEdict(g_iRCIdx[client]))
@@ -256,14 +242,9 @@ public void OnGameFrame()
 				vecAngle[1] += 5.0;
 				float vecOrigin[3];
 				GetClientEyePosition(client, vecOrigin);
-				if(GetClientButtons(client) & IN_DUCK)
-				{
-					vecOrigin[2] += 30.0;
-				}
-				else
-				{
-					vecOrigin[2] += 47.0;
-				}
+				vecOrigin[2] += 30.0;
+				if (!(GetClientButtons(client) & IN_DUCK))
+					vecOrigin[2] += 17.0;
 				TeleportEntity(g_iRCIdx[client], vecOrigin, vecAngle, NULL_VECTOR);
 			}
 		}
@@ -271,61 +252,54 @@ public void OnGameFrame()
 		{
 			g_iRCIdx[client] = -1;
 			g_flRCLastThink[client] = 0.0;
-		}	
+		}
+		continue;
 	}
 	return;
 }
 
-public void SDKHookCB_WeaponSwitchPost(int client, int weapon) 
+public void OnWeaponSwitch(int client, int weapon) 
 { 
-	if (!IsValidEdict(weapon))
-		return;
-	if (!IsValidEdict(g_iRCIdx[client]))
+	if (!IsValidEdict(weapon) || !IsValidEdict(g_iRCIdx[client]))
 		return;
 	char szModel[256];
 	GetEntPropString(weapon, Prop_Data, "m_ModelName", szModel, 256);
-	ReplaceString(szModel, 256, "_dropped", "", false);
+	ReplaceString(szModel, sizeof szModel, "_dropped", "", false);
 	SetEntityModel(g_iRCIdx[client], szModel);
-	
-	if 	(StrContains(szModel, "ied") != -1 ||
-		StrContains(szModel, "taser") != -1 ||
-		StrContains(szModel, "knife") != -1 ||
-		StrContains(szModel, "smokegrenade") != -1 ||
-		StrContains(szModel, "fraggrenade") != -1 ||
-		StrContains(szModel, "flashbang") != -1 ||
-		StrContains(szModel, "decoy") != -1 ||
-		StrContains(szModel, "molotov") != -1 ||
-		StrContains(szModel, "incendiarygrenade") != -1)
-	{
+	if (StrContains(szModel, "ied") != -1 			||
+		StrContains(szModel, "taser") != -1			||
+		StrContains(szModel, "knife") != -1			||
+		StrContains(szModel, "smokegrenade") != -1	||
+		StrContains(szModel, "fraggrenade") != -1	||
+		StrContains(szModel, "flashbang") != -1		||
+		StrContains(szModel, "decoy") != -1			||
+		StrContains(szModel, "molotov") != -1		||
+		StrContains(szModel, "incendiarygrenade") != -1
+	){
 		SetEntityRenderMode(g_iRCIdx[client], RENDER_NONE);
 		SetEntityRenderColor(g_iRCIdx[client], 255, 255, 255, 0);
 		SetGlowColor(g_iRCIdx[client], 255, 255, 255, 0);
+		return;
 	}
-	else
-	{
-		SetEntityRenderMode(g_iRCIdx[client], RENDER_TRANSCOLOR);
-		SetEntityRenderColor(g_iRCIdx[client], g_rcColor[client][0], g_rcColor[client][1], g_rcColor[client][2], 50);
-		SetGlowColor(g_iRCIdx[client], g_rcColor[client][0], g_rcColor[client][1], g_rcColor[client][2], 255);
-	}
+	SetEntityRenderMode(g_iRCIdx[client], RENDER_TRANSCOLOR);
+	SetEntityRenderColor(g_iRCIdx[client], g_rcColor[client][0], g_rcColor[client][1], g_rcColor[client][2], 50);
+	SetGlowColor(g_iRCIdx[client], g_rcColor[client][0], g_rcColor[client][1], g_rcColor[client][2], 255);
 	return;
 }
 
 public Action OnBulletImpact(Event event, const char[] name, bool dontBroadcast) 
 {
 	int client = GetClientOfUserId(event.GetInt("userid"));
-	if (IsValidClient(client))
+	if (IsValidClient(client) && IsPlayerAlive(client))
 	{
-		if (g_iRCIdx[client] != -1)
+		if (g_iRCIdx[client] != -1 && IsValidEdict(g_iRCIdx[client]))
 		{
-			if (IsValidEdict(g_iRCIdx[client]))
-			{
-				float vBullet[3];
-				vBullet[0] = event.GetFloat("x");
-				vBullet[1] = event.GetFloat("y");
-				vBullet[2] = event.GetFloat("z");
-				SniperCreateBeam(client, vBullet);
-				g_flRCLastThink[client] = GetGameTime() + 0.3;
-			}
+			float vBullet[3];
+			vBullet[0] = event.GetFloat("x");
+			vBullet[1] = event.GetFloat("y");
+			vBullet[2] = event.GetFloat("z");
+			CreateBeam(client, vBullet);
+			g_flRCLastThink[client] = GetGameTime() + 0.3;
 		}
 	}
 	return Plugin_Continue;
@@ -339,7 +313,7 @@ public Action OnBulletImpact(Event event, const char[] name, bool dontBroadcast)
 // 		{
 // 			g_iRCIdx[i] = -1;
 // 			g_flRCLastThink[i] = 0.0;
-// 			SDKUnhook(i, SDKHook_WeaponSwitchPost, SDKHookCB_WeaponSwitchPost);
+// 			SDKUnhook(i, SDKHook_WeaponSwitchPost, OnWeaponSwitch);
 // 			CreateRailcannon(i);
 // 		}
 // 	}
@@ -353,7 +327,7 @@ public Action OnPlayerSpawn(Event event, const char[] name, bool dontBroadcast)
 	{
 		g_iRCIdx[client] = -1;
 		g_flRCLastThink[client] = 0.0;
-		SDKUnhook(client, SDKHook_WeaponSwitchPost, SDKHookCB_WeaponSwitchPost);
+		SDKUnhook(client, SDKHook_WeaponSwitchPost, OnWeaponSwitch);
 		if (IsPlayerAlive(client))
 			CreateRailcannon(client);
 	}
@@ -363,40 +337,29 @@ public Action OnPlayerSpawn(Event event, const char[] name, bool dontBroadcast)
 public Action OnPlayerDeath(Event event, const char[] name, bool dontBroadcast) 
 {
 	int client = GetClientOfUserId(event.GetInt("userid"));
-	if (g_iRCIdx[client] != -1)
+	if (g_iRCIdx[client] != -1 && IsValidEdict(g_iRCIdx[client]))
 	{
-		if (IsValidEdict(g_iRCIdx[client]))
-		{
-			AcceptEntityInput(g_iRCIdx[client], "Kill");
-			g_iRCIdx[client] = -1;
-			g_flRCLastThink[client] = 0.0;
-		}
+		AcceptEntityInput(g_iRCIdx[client], "Kill");
+		g_iRCIdx[client] = -1;
+		g_flRCLastThink[client] = 0.0;
 	}
 	return Plugin_Continue;
 }
 
-public void SniperCreateBeam(int client, float vBullet[3])
+public void CreateBeam(int client, float vBullet[3])
 {
-	float vecOrigin[3];
+	float vecOrigin[3], vRCOrigin[3], vnewRCOrigin[3], vBulletTrace[3], vRCAngle[3];
 	GetClientEyePosition(client, vecOrigin);
-	if (GetClientButtons(client) & IN_DUCK)
-	{
-		vecOrigin[2] += 30.0;
-	}
-	else
-	{
-		vecOrigin[2] += 47.0;
-	}
+	vecOrigin[2] += 30.0;
+	if (!(GetClientButtons(client) & IN_DUCK))
+		vecOrigin[2] += 17.0;
 	TeleportEntity(g_iRCIdx[client], vecOrigin, NULL_VECTOR, NULL_VECTOR);
-	float vRCOrigin[3];
 	GetEntPropVector(g_iRCIdx[client], Prop_Send, "m_vecOrigin", vRCOrigin);
-	float distance = GetVectorDistance( vRCOrigin, vBullet);
+	float distance = GetVectorDistance(vRCOrigin, vBullet);
 	float percentage = 0.4 / (distance / 100);
-	float vnewRCOrigin[3];
 	vnewRCOrigin[0] = vRCOrigin[0] + ((vBullet[0] - vRCOrigin[0]) * percentage);
 	vnewRCOrigin[1] = vRCOrigin[1] + ((vBullet[1] - vRCOrigin[1]) * percentage);
 	vnewRCOrigin[2] = vRCOrigin[2] + ((vBullet[2] - vRCOrigin[2]) * percentage);
-	float vBulletTrace[3], vRCAngle[3];
 	MakeVectorFromPoints(vRCOrigin, vBullet, vBulletTrace);
 	GetVectorAngles(vBulletTrace, vRCAngle);
 	SetEntPropVector(g_iRCIdx[client], Prop_Send, "m_angRotation", vRCAngle);
@@ -417,7 +380,8 @@ public void SetGlowColor(int entity, int r, int g, int b, int a)
 	colors[2] = b;
 	colors[3] = a;
 	SetVariantColor(colors);
-	AcceptEntityInput(entity, "SetGlowColor");
+	if (entity != -1 && IsValidEntity(entity))
+		AcceptEntityInput(entity, "SetGlowColor");
 	return;
 }
 
@@ -487,8 +451,7 @@ public void QueryCallback(HTTPResponse response, int client)
 		}
 		else
 		{
-			PrintToChat(client, "\x01[\x0E%s\x01] 获取浮游炮设定\x04失败\x01, %N\x07 被给予\x01浮游炮授权", RCprefix, client);
-			PrintToChat(client, "\x01[\x0E%s\x01] \x04如\x01%N 已拥有授权, 请使用\x07!frc\x01强制刷新", RCprefix, client);
+			PrintToChat(client, "\x01[\x0E%s\x01] 获取浮游炮设定\x04失败\x01, \x07如[\x01%N\x07]\x01已拥有授权，请输入\x04!frc", RCprefix, client);
 		}
 	}
 	delete json;
